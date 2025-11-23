@@ -8,10 +8,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class VideoModun  {
-    private String FilePath;
+    private String idVideo;
     private String FileName;
     private String Duration;
-    public VideoModun(String duration) {
+    public VideoModun(String idVideo, String duration) {
+        this.idVideo = idVideo;
         this.Duration = duration;
 
     }

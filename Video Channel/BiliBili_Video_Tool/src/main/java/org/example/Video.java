@@ -60,9 +60,9 @@ public class Video implements DownloadVideo, DownloadThumbnail, CreateFolderVide
 
 
     @Override
-    public void checkDurationVideo(String FilePath) {
+    public void checkDurationVideo(String FilePath,String videoId) {
 
-        String videoPath = FilePath +File.separator + videoName +".mp4";
+        String videoPath = FilePath +File.separator + videoId +".mp4";
 
         File file = new File(videoPath);
 
@@ -102,6 +102,8 @@ public class Video implements DownloadVideo, DownloadThumbnail, CreateFolderVide
             int seconds = (int) (duration % 60);
 
             System.out.printf("Thời lượng video: %02d:%02d:%02d%n", hours, minutes, seconds);
+            System.out.println("\n─────────────────────────────────────────────────────────────");
+
             // Logic của bạn
             if(duration > 180){
                 Duration = true;
@@ -119,8 +121,8 @@ public class Video implements DownloadVideo, DownloadThumbnail, CreateFolderVide
 
 
     @Override
-    public String CreateFolderVideo(String outputFolder) throws InterruptedException, IOException {
-        File  folder = new File(outputFolder+ File.separator + videoName);
+    public String CreateFolderVideo(String outputFolder, String folderId) throws InterruptedException, IOException {
+        File  folder = new File(outputFolder+ File.separator + folderId);
         if (!folder.exists()) {
             boolean created = folder.mkdirs();
             if (created) {
@@ -137,13 +139,13 @@ public class Video implements DownloadVideo, DownloadThumbnail, CreateFolderVide
 
 
     @Override
-    public void DownloadThumbnailBaseUrl(String outputFolder) throws InterruptedException, IOException {
+    public void DownloadThumbnailBaseUrl(String outputFolder, String thumbnailId) throws InterruptedException, IOException {
         // Lưu dạng: outputFolder + title + .jpg
-        String Thumbnail_Path = outputFolder + File.separator + "%(title)s.%(ext)s";
+        String Thumbnail_Path = outputFolder + File.separator + thumbnailId +".jpg";
         ProcessBuilder pb = new ProcessBuilder(
                 ytDlpPath,
-//                "--quiet",
-//                "--no-warnings",
+                "--quiet",
+                "--no-warnings",
 //                "--print", "none",
                 "--progress",
                 "--skip-download",         // Không tải video
@@ -175,40 +177,43 @@ public class Video implements DownloadVideo, DownloadThumbnail, CreateFolderVide
 
 
     @Override
-    public void DownloadVideoBaseUrl(String outPutFolder) throws InterruptedException, IOException {
+    public void DownloadVideoBaseUrl(String outPutFolder, String videoId) throws InterruptedException, IOException {
 
         if (!ffmpegPath.exists()) {
-            System.out.println("Không tìm thấy ffmpeg ở: " + ffmpegPath.getAbsolutePath());
+            System.err.println("Không tìm thấy ffmpeg tại: " + ffmpegPath.getAbsolutePath());
             return;
         }
 
-        String outputTemplate = outPutFolder + File.separator + "%(title)s.%(ext)s";
+        String outputTemplate = outPutFolder + File.separator + videoId + ".mp4";
 
         ProcessBuilder pb = new ProcessBuilder(
                 ytDlpPath,
-                "--progress",
+                "--no-warnings",
+                "--no-progress",           // Tắt progress mặc định
+                "--external-downloader", "aria2c.exe",
+                "--external-downloader-args", "-x 16 -s 16 -k 1M",
+                "--postprocessor-args", "-loglevel quiet",
                 "--ffmpeg-location", ffmpegPath.getAbsolutePath(),
                 "-f", "bestvideo+bestaudio",
                 "-o", outputTemplate,
                 "--newline",
-                // add Exe here
-                "--external-downloader", "aria2c.exe",
-                "--external-downloader-args", "-x 16 -s 24 -k 4M",
                 videoUrl
         );
 
         pb.redirectErrorStream(true);
         Process process = pb.start();
 
-        // Regex yt-dlp progress (vd: 91% | 106MiB | 8.7MiB/s | ETA: 1s)
-        Pattern ytDlpPattern = Pattern.compile(
-                "(\\d+)% \\| (\\S+) \\| (\\S+)/s \\| ETA: (\\S+)"
+        // Regex Aria2c (Cho phép thiếu ETA)
+        Pattern aria2cPattern = Pattern.compile(
+                "\\[#.+?\\s+(\\S+)/\\S+\\((\\d+)%\\)\\s+CN:\\d+\\s+DL:(\\S+)(?:\\s+ETA:(\\S+))?\\]"
         );
 
-        // Regex aria2c progress (vd: [#236375 115MiB/116MiB(99%) CN:4 DL:8.6MiB ETA:1s])
-        Pattern aria2cPattern = Pattern.compile(
-                "\\[#.+?\\s+(\\S+)/\\S+\\((\\d+)%\\)\\s+CN:\\d+\\s+DL:(\\S+)\\s+ETA:(\\S+)\\]"
+        // Regex YT-DLP Backup
+        Pattern ytDlpPattern = Pattern.compile(
+                "(\\d+(?:\\.\\d{1,2})?)%\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)/s\\s*\\|\\s*ETA:\\s*(\\S+)"
         );
+
+        System.out.println("Đang tải: " + videoName);
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
@@ -216,42 +221,76 @@ public class Video implements DownloadVideo, DownloadThumbnail, CreateFolderVide
             String line;
             while ((line = reader.readLine()) != null) {
 
-                Matcher m1 = ytDlpPattern.matcher(line);
-                Matcher m2 = aria2cPattern.matcher(line);
+                Matcher m_aria = aria2cPattern.matcher(line);
+                Matcher m_ytdlp = ytDlpPattern.matcher(line);
 
-                if (m1.find()) {
-                    String percent = m1.group(1);
-                    String size = m1.group(2);
-                    String speed = m1.group(3);
-                    String eta = m1.group(4);
+                String percentStr = null;
+                String speed = "0B"; // Tốc độ
+                String eta = "--:--"; // Thời gian còn lại
 
-                    System.out.printf("\r%s%% | %s | %s/s | ETA: %s   ",
-                            percent, size, speed, eta);
-                    System.out.flush();
+                boolean isProgress = false;
+
+                if (m_aria.find()) {
+                    percentStr = m_aria.group(2);
+                    speed = m_aria.group(3);
+                    if (m_aria.groupCount() >= 4 && m_aria.group(4) != null) {
+                        eta = m_aria.group(4);
+                    }
+                    isProgress = true;
                 }
-                else if (m2.find()) {
-                    String size = m2.group(1);
-                    String percent = m2.group(2);
-                    String speed = m2.group(3);
-                    String eta = m2.group(4);
+                else if (m_ytdlp.find()) {
+                    percentStr = m_ytdlp.group(1);
+                    speed = m_ytdlp.group(3);
+                    eta = m_ytdlp.group(4);
+                    isProgress = true;
+                }
 
-                    System.out.printf("\r%s%% | %s | %s/s | ETA: %s   ",
-                            percent, size, speed, eta);
-                    System.out.flush();
+                if (isProgress && percentStr != null) {
+                    // Gọi hàm hiển thị dạng TEXT đơn giản
+                    printSimpleProgress(percentStr, eta, speed);
                 }
                 else {
-                    System.out.println(line);
+                    // Xử lý log rác
+                    String cleanLine = line.trim();
+                    if (!cleanLine.isEmpty() && !cleanLine.startsWith("[#") && !cleanLine.contains("Destination")) {
+                        // Xóa dòng hiện tại trước khi in log
+                        System.out.print("\r                                                        \r");
+                        System.out.println(cleanLine);
+                    }
                 }
             }
         }
 
         int exitCode = process.waitFor();
-        System.out.println("\nTải xong (exit code " + exitCode + ")");
+        System.out.println(); // Xuống dòng quan trọng
 
+        if (exitCode == 0) {
+            System.out.println("Xong: " + videoName);
+        } else {
+            System.out.println("Lỗi: " + exitCode);
+        }
 
-        // 🎯 Sau khi tải xong: kiểm tra nếu bị tách file -> tự merge
         autoMergeIfSeparated(outPutFolder, ffmpegPath);
     }
+
+    // --- HÀM HIỂN THỊ ĐƠN GIẢN (TEXT ONLY) ---
+    private void printSimpleProgress(String percentStr, String eta, String speed) {
+        try {
+            int percent = (int) Double.parseDouble(percentStr.replace(",", "."));
+
+            // Format: [ 45% ] ETA: 05s | 12MB/s
+            // %-6s: Cố định độ rộng cho ETA để chữ không bị nhảy
+            // %3d : Cố định độ rộng cho số phần trăm
+            System.out.printf("\rCòn: %-6s | %3d%% | %s/s   ",
+                    eta, percent, speed);
+
+            System.out.flush();
+
+        } catch (Exception e) {
+            // Ignored
+        }
+    }
+
 
     /**
      * Nếu trong thư mục có cả file video và audio riêng biệt thì tự động hợp nhất lại.

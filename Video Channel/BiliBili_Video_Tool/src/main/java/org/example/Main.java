@@ -89,10 +89,10 @@ public class Main {
             int count = 1;
             for (Video video : VideoData) {
                 System.out.println(count+"/"+VideoData.size());
-                String folderPath = video.CreateFolderVideo(finalOutFolder);
-                video.DownloadThumbnailBaseUrl(folderPath);
-                video.DownloadVideoBaseUrl(folderPath);
-                video.checkDurationVideo(folderPath);
+                String folderPath = video.CreateFolderVideo(finalOutFolder, String.valueOf(count));
+                video.DownloadThumbnailBaseUrl(folderPath, String.valueOf(count));
+                video.DownloadVideoBaseUrl(folderPath, String.valueOf(count));
+                video.checkDurationVideo(folderPath, String.valueOf(count));
                 String duration = "";
                 if(video.isDuration()){
                     duration = "Long";
@@ -100,7 +100,7 @@ public class Main {
                 else{
                     duration = "Short";
                 }
-                listVideos.put(video.getVideoName(), new VideoLocal(duration));
+                listVideos.put(video.getVideoName(), new VideoLocal(String.valueOf(count), duration));
 
                 count++;
 
@@ -126,7 +126,6 @@ public class Main {
             HashMap<String, Video> listCurrentVideos = jsonData.getLocalData();
             System.out.println("List Current Local Video\n"+listCurrentVideos);
 
-
             ArrayList<Video> NewVideoData = new ArrayList<>();
             int skipCount = 0;
             int newCount = 0;
@@ -149,14 +148,14 @@ public class Main {
                 return;
             } else {
                 System.out.println("Đã cập nhật thêm " + NewVideoData.size() + " video mới!");
-                int count = 1;
+                int count = listCurrentVideos.size() + 1;
 
                 for (Video video : NewVideoData) {
                     System.out.println(count+"/"+NewVideoData.size());
-                    String folderPath = video.CreateFolderVideo(finalOutFolder);
-                    video.DownloadThumbnailBaseUrl(folderPath);
-                    video.DownloadVideoBaseUrl(folderPath);
-                    video.checkDurationVideo(folderPath);
+                    String folderPath = video.CreateFolderVideo(finalOutFolder, String.valueOf(count));
+                    video.DownloadThumbnailBaseUrl(folderPath, String.valueOf(count));
+                    video.DownloadVideoBaseUrl(folderPath, String.valueOf(count));
+                    video.checkDurationVideo(folderPath, String.valueOf(count));
 
                     String duration = "";
                     if(video.isDuration()){
@@ -166,7 +165,7 @@ public class Main {
                         duration = "Short";
                     }
 
-                    listVideos.put(video.getVideoName(), new VideoLocal(duration));
+                    listVideos.put(video.getVideoName(), new VideoLocal(String.valueOf(count),duration));
                     count++;
 
                 }

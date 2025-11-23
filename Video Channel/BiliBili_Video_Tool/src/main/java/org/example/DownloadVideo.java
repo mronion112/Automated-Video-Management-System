@@ -4,6 +4,6 @@ import java.io.IOException;
 
 public interface DownloadVideo {
 
-    public abstract void DownloadVideoBaseUrl(String Url) throws InterruptedException, IOException;
+    public abstract void DownloadVideoBaseUrl(String Url, String videoId) throws InterruptedException, IOException;
 
 }

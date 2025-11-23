@@ -16,6 +16,8 @@ import org.example.Module.Local.VideoModun;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+import java.io.*;
+
 
 public class DriveGoogleModun {
     private static final String APPLICATION_NAME = "Drive Folder Upload OAuth";
@@ -130,10 +132,14 @@ public class DriveGoogleModun {
         int addFolder = 1;
         int count = 1;
         for (String videoName : newFolders.keySet()) {
+            String iteamDir = localFolderPath + java.io.File.separator + videoName;
 
-            Path fileDir = Path.of(localFolderPath, videoName);
-
-            java.io.File localItem = new java.io.File(fileDir.toUri());
+            java.io.File localItem;
+            try {
+                localItem  = new java.io.File(iteamDir);
+            } catch (RuntimeException e) {
+                throw new RuntimeException(e);
+            }
 
             if(!localItem.isDirectory() || !localItem.exists()) {
                 System.err.printf("Bỏ qua: Đường dẫn không tồn tại hoặc không phải là thư mục: %s%n", localItem.getAbsolutePath());
