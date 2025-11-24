@@ -8,8 +8,8 @@ StoryScrappingTool (support for tieuhoadan.net)
 - It will using jsoup to scrapping the data of story 
 - Data will store in your local --> create folder(name = name story) and generate 2 file Data.txt and Hook.txt
 - It will create a database ( DataScrap.json) in your folder you choose 
-	Prevent the duplicate folder
-	You can delete all the folder after up to drive (except DataScrap.json)
+	- Prevent the duplicate folder
+	- You can delete all the folder after up to drive (except DataScrap.json)
 
 VoiceTranference ( use vbee.com website)
 - Using selenium 
@@ -21,7 +21,8 @@ Note : Speed = 1.1 and use default voicer AI
 
 StoryGoogleUpload ( using GoogleAPI)
 - With the root Folder ( which folder you use to store data scrapping form the first one).
-	That will take the DataScrap.json in side the rootFolder to check what folder not existing in Drive and upload it
+	- That will take the DataScrap.json in side the rootFolder to check what folder not existing in Drive and upload it
+
 - It will automatically up to your drive all of list folder in rootFolder and it Data.txt and Hook.txt inside also 
 - Then according to the google drive list folder. It will manager and write it onto your google sheet  
 
