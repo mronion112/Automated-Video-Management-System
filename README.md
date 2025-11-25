@@ -1,4 +1,4 @@
-# Automated-Video-Management-System
+# ListTool
 A list of tool for the youtuber to mangement their channel automatically (run in console) 
 
 There have 2 folder in github : 
